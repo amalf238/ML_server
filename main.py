@@ -30,8 +30,7 @@ app.add_middleware(
 # Request/Response models
 class SearchRequest(BaseModel):
     description: str
-    latitude: float
-    longitude: float
+    location: str  # Changed from latitude/longitude to location name
 
 class WorkerResponse(BaseModel):
     worker_id: str
@@ -49,6 +48,132 @@ class WorkerResponse(BaseModel):
 class SearchResponse(BaseModel):
     workers: List[WorkerResponse]
     ai_analysis: Dict
+
+# Location Name to Coordinates Converter
+class LocationConverter:
+    """Convert location names to coordinates"""
+    
+    def __init__(self):
+        # Comprehensive Sri Lankan location database
+        self.location_database = {
+            # Major Cities
+            'colombo': (6.9271, 79.8612),
+            'kandy': (7.2906, 80.6337),
+            'galle': (6.0535, 80.2210),
+            'negombo': (7.2084, 79.8380),
+            'jaffna': (9.6615, 80.0255),
+            'kurunegala': (7.4818, 80.3609),
+            'anuradhapura': (8.3114, 80.4037),
+            'matara': (5.9549, 80.5550),
+            'ratnapura': (6.6828, 80.3992),
+            'trincomalee': (8.5874, 81.2152),
+            'batticaloa': (7.7310, 81.6747),
+            'badulla': (6.9934, 81.0550),
+            'nuwara eliya': (6.9497, 80.7891),
+            'ampara': (7.2978, 81.6722),
+            'vavuniya': (8.7542, 80.4982),
+            'mannar': (8.9810, 79.9044),
+            'polonnaruwa': (7.9403, 81.0188),
+            'hambantota': (6.1429, 81.1212),
+            'puttalam': (8.0362, 79.8283),
+            'kegalle': (7.2523, 80.3436),
+            'monaragala': (6.8728, 81.3507),
+            'kilinochchi': (9.3961, 80.3990),
+            'mullativu': (9.2671, 80.8142),
+            
+            # Colombo Suburbs
+            'koswatta': (6.8875, 79.8800),
+            'dehiwala': (6.8560, 79.8638),
+            'mount lavinia': (6.8374, 79.8634),
+            'moratuwa': (6.7730, 79.8816),
+            'kotte': (6.8905, 79.9015),
+            'sri jayawardenepura kotte': (6.8905, 79.9015),
+            'nugegoda': (6.8649, 79.8997),
+            'maharagama': (6.8482, 79.9298),
+            'rajagiriya': (6.9084, 79.8916),
+            'battaramulla': (6.8992, 79.9186),
+            'malabe': (6.9147, 79.9731),
+            'kaduwela': (6.9381, 79.9897),
+            'pelawatta': (6.8461, 79.9062),
+            'thalawathugoda': (6.8738, 79.9750),
+            'homagama': (6.8441, 80.0022),
+            'kottawa': (6.8207, 79.9097),
+            'piliyandala': (6.8008, 79.9226),
+            'boralesgamuwa': (6.8417, 79.9025),
+            'athurugiriya': (6.8765, 79.9891),
+            'pannipitiya': (6.8449, 79.9607),
+            
+            # Western Province
+            'wattala': (6.9890, 79.8917),
+            'ja ela': (7.0747, 79.8910),
+            'ja-ela': (7.0747, 79.8910),
+            'kiribathgoda': (6.9804, 79.9297),
+            'kelaniya': (6.9553, 79.9192),
+            'gampaha': (7.0873, 80.0014),
+            'kalutara': (6.5854, 79.9607),
+            'panadura': (6.7132, 79.9026),
+            'beruwala': (6.4788, 79.9827),
+            'wadduwa': (6.6633, 79.9297),
+            'horana': (6.7158, 80.0626),
+            'matugama': (6.4896, 80.1628),
+            'avissawella': (6.9522, 80.2095),
+            'minuwangoda': (7.1727, 79.9533),
+            'divulapitiya': (7.2232, 80.0078),
+            'veyangoda': (7.1583, 80.0577),
+            'nittambuwa': (7.1393, 80.0931),
+            
+            # Other Cities and Towns
+            'matale': (7.4675, 80.6234),
+            'dambulla': (7.8742, 80.6511),
+            'chilaw': (7.5759, 79.7953),
+            'kalmunai': (7.4088, 81.8356),
+            'wattegama': (7.2869, 80.7020),
+            'balangoda': (6.6521, 80.6997),
+            'embilipitiya': (6.3429, 80.8502),
+            'tangalle': (6.0241, 80.7959),
+            'ambalantota': (6.1210, 81.0217),
+            'deniyaya': (6.3442, 80.5544),
+            'tissamaharama': (6.2843, 81.2874),
+            'haputale': (6.7678, 80.9563),
+            'bandarawela': (6.8318, 80.9854),
+            'wellawaya': (6.7347, 81.1018),
+        }
+        
+    def get_coordinates(self, location_name: str) -> tuple:
+        """Convert location name to coordinates"""
+        # Normalize the input
+        normalized_name = location_name.lower().strip()
+        
+        # Direct match
+        if normalized_name in self.location_database:
+            coords = self.location_database[normalized_name]
+            print(f"📍 Found exact match: {location_name} -> {coords}")
+            return coords
+        
+        # Try partial matching
+        for loc_key, coords in self.location_database.items():
+            if normalized_name in loc_key or loc_key in normalized_name:
+                print(f"📍 Found partial match: {location_name} -> {loc_key} -> {coords}")
+                return coords
+        
+        # Default to Colombo if not found
+        print(f"⚠️ Location '{location_name}' not found, defaulting to Colombo")
+        return self.location_database['colombo']
+    
+    def get_location_name(self, location_input: str) -> str:
+        """Get normalized location name"""
+        normalized_name = location_input.lower().strip()
+        
+        # Direct match
+        if normalized_name in self.location_database:
+            return normalized_name.title()
+        
+        # Try partial matching
+        for loc_key in self.location_database.keys():
+            if normalized_name in loc_key or loc_key in normalized_name:
+                return loc_key.title()
+        
+        return "Colombo"  # Default
 
 # Your EXACT AI Service Classifier from notebook
 class AIServiceClassifier:
@@ -397,10 +522,6 @@ class CompleteAIRecommendationSystem:
             'user_location': user_coords
         }
 
-# Global variables
-ai_system = None
-workers_database = None
-
 def create_ai_training_data():
     """Create comprehensive training data for AI learning (EXACT from your notebook)"""
     print("🎯 Creating AI training data with semantic understanding...")
@@ -590,9 +711,18 @@ def create_ai_training_data():
     print(f"✅ Generated {len(training_df)} training examples")
     return training_df
 
+# Global variables
+ai_system = None
+workers_database = None
+location_converter = None
+
 @app.on_event("startup")
 async def startup_event():
-    global ai_system, workers_database
+    global ai_system, workers_database, location_converter
+    
+    # Initialize Location Converter
+    location_converter = LocationConverter()
+    print("✅ Location Converter initialized")
     
     # Initialize AI system
     ai_system = CompleteAIRecommendationSystem()
@@ -610,21 +740,35 @@ async def startup_event():
 
 @app.get("/")
 async def root():
-    return {"message": "Handyman AI Service API", "status": "running", "workers_count": len(workers_database['workers']) if workers_database else 0}
+    return {
+        "message": "Handyman AI Service API", 
+        "status": "running", 
+        "workers_count": len(workers_database['workers']) if workers_database else 0,
+        "location_converter": "enabled"
+    }
 
 @app.post("/search", response_model=SearchResponse)
 async def search_workers(request: SearchRequest):
-    if not ai_system or not workers_database:
+    if not ai_system or not workers_database or not location_converter:
         raise HTTPException(status_code=500, detail="AI system not initialized")
     
     try:
+        # Convert location name to coordinates
+        user_lat, user_lng = location_converter.get_coordinates(request.location)
+        location_name = location_converter.get_location_name(request.location)
+        
+        print(f"🌍 User location: {request.location} -> ({user_lat}, {user_lng})")
+        
         # Get AI recommendations using your EXACT system
         recommendations, analysis = ai_system.get_ai_recommendations(
             request.description, 
             workers_database,
-            request.latitude, 
-            request.longitude
+            user_lat, 
+            user_lng
         )
+        
+        # Add the user's input location to analysis
+        analysis['user_input_location'] = location_name
         
         # Convert to response format
         worker_responses = []
