@@ -40,6 +40,7 @@ class WorkerResponse(BaseModel):
     experience_years: int
     daily_wage_lkr: int
     phone_number: str
+    email: str 
     city: str
     distance_km: float
     ai_confidence: float
@@ -744,22 +745,22 @@ async def root():
         "message": "Handyman AI Service API", 
         "status": "running", 
         "workers_count": len(workers_database['workers']) if workers_database else 0,
-        "location_converter": "enabled"
+        "location_converter": "enabled",
+        "email_support": "enabled" 
+        
     }
-
+    
 @app.post("/search", response_model=SearchResponse)
 async def search_workers(request: SearchRequest):
     if not ai_system or not workers_database or not location_converter:
         raise HTTPException(status_code=500, detail="AI system not initialized")
     
     try:
-        # Convert location name to coordinates
         user_lat, user_lng = location_converter.get_coordinates(request.location)
         location_name = location_converter.get_location_name(request.location)
         
         print(f"🌍 User location: {request.location} -> ({user_lat}, {user_lng})")
         
-        # Get AI recommendations using your EXACT system
         recommendations, analysis = ai_system.get_ai_recommendations(
             request.description, 
             workers_database,
@@ -767,13 +768,21 @@ async def search_workers(request: SearchRequest):
             user_lng
         )
         
-        # Add the user's input location to analysis
         analysis['user_input_location'] = location_name
         
-        # Convert to response format
+        # MODIFIED: Extract email from worker data
         worker_responses = []
         for rec in recommendations:
             worker = rec['worker']
+            
+            # Extract email from dataset
+            worker_email = worker.get('contact', {}).get('email', '')
+            if not worker_email:
+                worker_email = worker.get('email', '')
+            if not worker_email:
+                # Fallback only if email not in dataset
+                worker_email = f"{worker['worker_id'].lower()}@fixmate.worker"
+            
             worker_responses.append(WorkerResponse(
                 worker_id=worker['worker_id'],
                 worker_name=worker['worker_name'],
@@ -782,6 +791,7 @@ async def search_workers(request: SearchRequest):
                 experience_years=worker['experience_years'],
                 daily_wage_lkr=worker['pricing']['daily_wage_lkr'],
                 phone_number=worker['contact']['phone_number'],
+                email=worker_email,  # ADDED
                 city=worker['location']['city'],
                 distance_km=round(rec['distance_km'], 1),
                 ai_confidence=round(rec['service_confidence'] * 100, 1),
